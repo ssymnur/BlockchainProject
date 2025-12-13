@@ -8,7 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
-
   <!-- Style -->
   <style>
     body {
@@ -43,10 +42,6 @@
       padding: 25px;
       border-radius: 10px;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-    }
-
-    .role-select {
-      margin-bottom: 25px;
     }
 
     label {
@@ -108,6 +103,20 @@
       margin: 20px 0;
       color: #666;
     }
+
+    /* LOGIN BOX */
+    #login-box {
+      margin-bottom: 25px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+
+    #loginStatus {
+      font-size: 13px;
+      font-weight: 600;
+    }
   </style>
 </head>
 
@@ -119,8 +128,12 @@
 </header>
 
 <main>
-  <div class="role-select">
-    <label for="role">Select User Role</label>
+
+  <!-- LOGIN -->
+  <div id="login-box">
+    <h3>Login</h3>
+
+    <label>User Role</label>
     <select id="role">
       <option value="">-- Choose Role --</option>
       <option value="producer">Producer (Farmer)</option>
@@ -129,9 +142,20 @@
       <option value="retailer">Retailer</option>
       <option value="customer">Customer</option>
     </select>
+
+    <label>User ID</label>
+    <input id="userId" placeholder="User ID" />
+
+    <label>Password</label>
+    <input id="password" type="password" placeholder="Password" />
+
+    <button id="loginBtn">Login</button>
+    <p id="loginStatus"></p>
   </div>
 
+  <!-- DYNAMIC UI -->
   <div id="ui-container"></div>
+
 </main>
 
 <footer>
