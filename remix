@@ -1,0 +1,189 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract FreshChain {
+
+    // =========================
+    // ADMIN
+    // =========================
+    address public admin;
+
+    constructor() {
+        admin = msg.sender; // MetaMask'te deploy eden = ADMIN
+    }
+
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Not admin");
+        _;
+    }
+
+    // =========================
+    // ROLES
+    // =========================
+    mapping(address => bool) public producers;
+    mapping(address => bool) public transporters;
+    mapping(address => bool) public distributors;
+    mapping(address => bool) public retailers;
+
+    modifier onlyProducer() {
+        require(producers[msg.sender], "Not producer");
+        _;
+    }
+
+    modifier onlyTransporter() {
+        require(transporters[msg.sender], "Not transporter");
+        _;
+    }
+
+    modifier onlyDistributor() {
+        require(distributors[msg.sender], "Not distributor");
+        _;
+    }
+
+    modifier onlyRetailer() {
+        require(retailers[msg.sender], "Not retailer");
+        _;
+    }
+
+    // =========================
+    // REGISTER ROLES (ADMIN ONLY)
+    // =========================
+    function registerProducer(address _addr) external onlyAdmin {
+        producers[_addr] = true;
+    }
+
+    function registerTransporter(address _addr) external onlyAdmin {
+        transporters[_addr] = true;
+    }
+
+    function registerDistributor(address _addr) external onlyAdmin {
+        distributors[_addr] = true;
+    }
+
+    function registerRetailer(address _addr) external onlyAdmin {
+        retailers[_addr] = true;
+    }
+
+    // =========================
+    // BATCH STRUCTURES
+    // =========================
+    struct SensorData {
+        int temperature;
+        int humidity;
+        string location;
+    }
+
+    struct Batch {
+        uint batchId;
+        string productName;
+        uint quantity;
+        address currentOwner;
+        bool arrived;
+        SensorData[] sensors;
+        address[] ownershipHistory;
+    }
+
+    mapping(uint => Batch) public batches;
+
+    // =========================
+    // EVENTS
+    // =========================
+    event BatchCreated(uint batchId, string productName, uint quantity);
+    event SensorAdded(uint batchId, int temperature, int humidity, string location);
+    event OwnershipTransferred(uint batchId, address newOwner);
+    event Arrived(uint batchId);
+
+    // =========================
+    // PRODUCER
+    // =========================
+    function createBatch(
+        uint _batchId,
+        string memory _name,
+        uint _quantity
+    ) external onlyProducer {
+
+        require(batches[_batchId].batchId == 0, "Batch already exists");
+
+        Batch storage b = batches[_batchId];
+        b.batchId = _batchId;
+        b.productName = _name;
+        b.quantity = _quantity;
+        b.currentOwner = msg.sender;
+        b.ownershipHistory.push(msg.sender);
+
+        emit BatchCreated(_batchId, _name, _quantity);
+    }
+
+    // =========================
+    // TRANSPORTER
+    // =========================
+    function addSensorData(
+        uint _batchId,
+        int _temp,
+        int _humidity,
+        string memory _location
+    ) external onlyTransporter {
+
+        require(_temp >= -10 && _temp <= 40, "Temp out of range");
+        require(_humidity >= 0 && _humidity <= 100, "Humidity out of range");
+
+        batches[_batchId].sensors.push(
+            SensorData(_temp, _humidity, _location)
+        );
+
+        emit SensorAdded(_batchId, _temp, _humidity, _location);
+    }
+
+    // =========================
+    // DISTRIBUTOR
+    // =========================
+    function transferOwnership(
+        uint _batchId,
+        address _newOwner
+    ) external onlyDistributor {
+
+        require(_newOwner != address(0), "Invalid address");
+
+        Batch storage b = batches[_batchId];
+        b.currentOwner = _newOwner;
+        b.ownershipHistory.push(_newOwner);
+
+        emit OwnershipTransferred(_batchId, _newOwner);
+    }
+
+    // =========================
+    // RETAILER
+    // =========================
+    function markAsArrived(uint _batchId) external onlyRetailer {
+        batches[_batchId].arrived = true;
+        emit Arrived(_batchId);
+    }
+
+    // =========================
+    // CUSTOMER VIEW
+    // =========================
+    function getBatchHistory(uint _batchId)
+        external
+        view
+        returns (
+            uint,
+            string memory,
+            uint,
+            address,
+            bool,
+            SensorData[] memory,
+            address[] memory
+        )
+    {
+        Batch storage b = batches[_batchId];
+        return (
+            b.batchId,
+            b.productName,
+            b.quantity,
+            b.currentOwner,
+            b.arrived,
+            b.sensors,
+            b.ownershipHistory
+        );
+    }
+}
