@@ -1,4 +1,4 @@
-const CONTRACT_ADDRESS = "0x2B6A68EC966606848c3Ff0Be5D98B8393c8576B1"; // deploy adresin
+const CONTRACT_ADDRESS = "0x0E7A52C8F30E54B2B316113183234F9B353Be4fb"; 
 const ABI = [
 	{
 		"inputs": [
@@ -41,12 +41,6 @@ const ABI = [
 				"internalType": "uint256",
 				"name": "batchId",
 				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "bool",
-				"name": "passedInspection",
-				"type": "bool"
 			}
 		],
 		"name": "Arrived",
@@ -106,11 +100,6 @@ const ABI = [
 				"internalType": "uint256",
 				"name": "_batchId",
 				"type": "uint256"
-			},
-			{
-				"internalType": "bool",
-				"name": "_passedInspection",
-				"type": "bool"
 			}
 		],
 		"name": "markAsArrived",
@@ -239,6 +228,19 @@ const ABI = [
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "admin",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -363,19 +365,6 @@ const ABI = [
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "owner",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "address",
@@ -432,8 +421,7 @@ const ABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-];
-
+]
 const users = {
   producer: { id: "farmer01", password: "farmer123" },
   transporter: { id: "trans01", password: "trans123" },
@@ -458,7 +446,6 @@ document.getElementById("loginBtn").onclick = () => {
     return;
   }
 
-  // Customer rolü için şifre kontrolü yok
   if (role === "customer") {
     loginStatus.textContent = "✅ Login successful (Customer)";
     loginStatus.style.color = "green";
@@ -468,7 +455,6 @@ document.getElementById("loginBtn").onclick = () => {
     return;
   }
 
-  // Diğer roller için kontrol
   if (!userId || !password) {
     loginStatus.textContent = "❌ Please fill all fields";
     loginStatus.style.color = "red";
@@ -488,11 +474,10 @@ document.getElementById("loginBtn").onclick = () => {
   }
 };
 
-
 // Blockchain init
 async function initBlockchain() {
   if (typeof window.ethereum === "undefined") {
-    alert("❌ MetaMask not found! (Chrome + MetaMask gerekli)");
+    alert("❌ MetaMask not found!");
     return;
   }
   try {
@@ -513,7 +498,7 @@ function loadRoleUI(role) {
   const container = document.getElementById("ui-container");
   container.innerHTML = "";
 
-  // Geri butonu
+  // Back button
   const backBtn = document.createElement("button");
   backBtn.textContent = "🔙 Back to Login";
   backBtn.style.marginBottom = "10px";
@@ -525,9 +510,9 @@ function loadRoleUI(role) {
   };
   container.appendChild(backBtn);
 
-  // Role bazlı UI
   let html = "";
 
+  // PRODUCER
   if (role === "producer") {
     html = `
       <div class="section">
@@ -539,13 +524,14 @@ function loadRoleUI(role) {
       </div>
     `;
     container.insertAdjacentHTML("beforeend", html);
+
     document.getElementById("createBatchBtn").onclick = async () => {
       try {
-        const tx = await contract.createBatch(
-          document.getElementById("batchId").value,
-          document.getElementById("productName").value,
-          document.getElementById("quantity").value
-        );
+        const batchId = parseInt(document.getElementById("batchId").value);
+        const quantity = parseInt(document.getElementById("quantity").value);
+        const productName = document.getElementById("productName").value;
+
+        const tx = await contract.createBatch(batchId, productName, quantity);
         await tx.wait();
         alert("✅ Batch created successfully!");
       } catch (err) {
@@ -555,6 +541,7 @@ function loadRoleUI(role) {
     };
   }
 
+  // TRANSPORTER
   if (role === "transporter") {
     html = `
       <div class="section">
@@ -567,14 +554,15 @@ function loadRoleUI(role) {
       </div>
     `;
     container.insertAdjacentHTML("beforeend", html);
+
     document.getElementById("sensorBtn").onclick = async () => {
       try {
-        const tx = await contract.addSensorData(
-          document.getElementById("batchId").value,
-          document.getElementById("temp").value,
-          document.getElementById("humidity").value,
-          document.getElementById("location").value
-        );
+        const batchId = parseInt(document.getElementById("batchId").value);
+        const temp = parseInt(document.getElementById("temp").value);
+        const humidity = parseInt(document.getElementById("humidity").value);
+        const location = document.getElementById("location").value;
+
+        const tx = await contract.addSensorData(batchId, temp, humidity, location);
         await tx.wait();
         alert("✅ Sensor data added!");
       } catch (err) {
@@ -583,45 +571,52 @@ function loadRoleUI(role) {
     };
   }
 
+  // DISTRIBUTOR
   if (role === "distributor") {
     html = `
       <div class="section">
-        <h3>Transfer Ownership</h3>
+        <h3>🏬 Distributor - Transfer to Retailer</h3>
         <input id="batchId" placeholder="Batch ID">
-        <input id="newOwner" placeholder="New Owner Address">
-        <button id="transferBtn">Transfer</button>
+        <input id="retailerAddr" placeholder="Retailer Address">
+        <button id="transferBtn">Transfer to Retailer</button>
       </div>
     `;
     container.insertAdjacentHTML("beforeend", html);
+
     document.getElementById("transferBtn").onclick = async () => {
       try {
-        const tx = await contract.transferOwnership(
-          document.getElementById("batchId").value,
-          document.getElementById("newOwner").value
-        );
+        const batchId = parseInt(document.getElementById("batchId").value);
+        const retailerAddr = document.getElementById("retailerAddr").value;
+
+        if (!ethers.utils.isAddress(retailerAddr)) {
+          alert("❌ Invalid Retailer Ethereum address");
+          return;
+        }
+
+        const tx = await contract.transferOwnership(batchId, retailerAddr);
         await tx.wait();
-        alert("✅ Ownership transferred!");
+        alert("✅ Ownership transferred to Retailer!");
       } catch (err) {
         alert("❌ ERROR: " + (err.reason || err.message));
       }
     };
   }
 
+  // RETAILER
   if (role === "retailer") {
     html = `
       <div class="section">
-        <h3>Final Inspection</h3>
+        <h3>🏪 Retailer - Final Inspection</h3>
         <input id="batchId" placeholder="Batch ID">
         <button id="arrivedBtn">Mark as Arrived</button>
       </div>
     `;
     container.insertAdjacentHTML("beforeend", html);
+
     document.getElementById("arrivedBtn").onclick = async () => {
       try {
-        const tx = await contract.markAsArrived(
-          document.getElementById("batchId").value,
-          true
-        );
+        const batchId = parseInt(document.getElementById("batchId").value);
+        const tx = await contract.markAsArrived(batchId); // sadece 1 parametre!
         await tx.wait();
         alert("✅ Product marked as arrived!");
       } catch (err) {
@@ -630,20 +625,22 @@ function loadRoleUI(role) {
     };
   }
 
+  // CUSTOMER
   if (role === "customer") {
     html = `
       <div class="section">
-        <h3>View Product History</h3>
-        <input id="batchId" placeholder="Batch ID">
+        <h3>🔍 View Product History</h3>
+        <input id="batchId" placeholder="Enter Batch ID">
         <button id="viewBtn">View</button>
-        <pre id="output"></pre>
+        <div id="output" class="card"></div>
         <canvas id="qr"></canvas>
       </div>
     `;
     container.insertAdjacentHTML("beforeend", html);
+
     document.getElementById("viewBtn").onclick = async () => {
       try {
-        const batchId = document.getElementById("batchId").value;
+        const batchId = parseInt(document.getElementById("batchId").value);
         const history = await contract.getBatchHistory(batchId);
 
         const formatted = {
@@ -660,8 +657,52 @@ function loadRoleUI(role) {
           ownershipHistory: history[6]
         };
 
-        document.getElementById("output").textContent =
-          JSON.stringify(formatted, null, 2);
+        const output = document.getElementById("output");
+        output.innerHTML = `
+          <h4>📦 Product Information</h4>
+          <table>
+            <tr><td><b>Batch ID</b></td><td>${formatted.batchId}</td></tr>
+            <tr><td><b>Product</b></td><td>${formatted.productName}</td></tr>
+            <tr><td><b>Quantity</b></td><td>${formatted.quantity}</td></tr>
+            <tr><td><b>Arrived</b></td><td>${formatted.arrived}</td></tr>
+          </table>
+
+          <h4>🚚 Current Owner</h4>
+          <p class="mono">${formatted.currentOwner}</p>
+
+          <h4>🌡️ Sensor Logs</h4>
+          ${
+            formatted.sensorLogs.length === 0
+              ? "<p>No sensor data available.</p>"
+              : `
+                <table>
+                  <tr>
+                    <th>Temperature</th>
+                    <th>Humidity</th>
+                    <th>Location</th>
+                  </tr>
+                  ${formatted.sensorLogs
+                    .map(
+                      log => `
+                        <tr>
+                          <td>${log.temperature}</td>
+                          <td>${log.humidity}</td>
+                          <td>${log.location}</td>
+                        </tr>
+                      `
+                    )
+                    .join("")}
+                </table>
+              `
+          }
+
+          <h4>🔗 Ownership History</h4>
+          <ul>
+            ${formatted.ownershipHistory
+              .map(addr => `<li class="mono">${addr}</li>`)
+              .join("")}
+          </ul>
+        `;
 
         QRCode.toCanvas(
           document.getElementById("qr"),
@@ -674,3 +715,6 @@ function loadRoleUI(role) {
     };
   }
 }
+
+ 
+ 
